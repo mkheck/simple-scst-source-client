@@ -11,14 +11,12 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.bind.annotation.*;
 
 @SpringBootApplication
@@ -39,17 +37,25 @@ class SecurityConfig extends WebSecurityConfigurerAdapter {
 		UserDetails mark = User.builder()
 				.username("mark")
 				.password(pwEncoder.encode("password"))
+				.roles("USER", "ADMIN")
+				.build();
+
+		UserDetails larry = User.builder()
+				.username("larry")
+				.password(pwEncoder.encode("badpassword"))
 				.roles("USER")
 				.build();
 
-		return new InMemoryUserDetailsManager(mark);
+		return new InMemoryUserDetailsManager(mark, larry);
 	}
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http
 				.csrf().disable()
-				.authorizeRequests().mvcMatchers(HttpMethod.POST, "/dog/add").hasRole("USER")
+				.authorizeRequests()
+					.mvcMatchers("/myactuator/**").hasRole("ADMIN")
+					.mvcMatchers(HttpMethod.POST, "/dog/add").hasRole("USER")
 				.anyRequest().authenticated()
 				.and()
 				.httpBasic()
@@ -65,10 +71,10 @@ class SecurityConfig extends WebSecurityConfigurerAdapter {
 class DogController {
 	private final Source source;
 
-//	@GetMapping
-//	String testDog() {
-//		return "Bow wow";
-//	}
+	@GetMapping("/woof")
+	String testDog() {
+		return "Bow wow";
+	}
 
 	@GetMapping("/get/{type}")
 	private Dog getPuppy(@PathVariable String type) {
